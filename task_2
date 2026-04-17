@@ -1,1 +1,37 @@
-
+import psutil
+import tkinter as tk
+from tkinter import ttk
+import time
+def update_stats():
+    cpu = psutil.cpu_percent(interval=1)
+    ram = psutil.virtual_memory()
+    disk = psutil.disk_usage('.')
+    cpu_text.config(text=f'CPU: {cpu}%')
+    ram_text.config(text=f'RAM: {ram.percent}%  ({ram.used // (1024 ** 3)}/{ram.total // (1024 ** 3)} ГБ)')
+    disk_text.config(text=f'DISK: {disk.percent}%  ({disk.used // (1024 ** 3)}/{disk.total // (1024 ** 3)} ГБ)')
+    cpu_progress['value'] = cpu
+    ram_progress['value'] = ram.percent
+    disk_progress['value'] = disk.percent
+    time_update.config(text=f'Обновлено: {time.strftime("%H:%M:%S")}')
+    window.after(2000, update_stats)
+window = tk.Tk()
+window.title('Системный монитор')
+window.geometry('500x350')
+title = tk.Label(window, text='Системный монитор', font=('Arial', 16, 'bold'))
+title.pack(pady=10)
+cpu_text = tk.Label(window, text='CPU: 0%', font=('Arial', 12))
+cpu_text.pack(anchor='w', padx=20)
+cpu_progress = ttk.Progressbar(window, length=400, mode='determinate')
+cpu_progress.pack(pady=5, padx=20)
+ram_text = tk.Label(window, text='RAM: 0% (0/0 ГБ)', font=('Arial', 12))
+ram_text.pack(anchor='w', padx=20, pady=(10, 0))
+ram_progress = ttk.Progressbar(window, length=400, mode='determinate')
+ram_progress.pack(pady=5, padx=20)
+disk_text = tk.Label(window, text='Диск: 0% (0/0 ГБ)', font=('Arial', 12))
+disk_text.pack(anchor='w', padx=20, pady=(10, 0))
+disk_progress = ttk.Progressbar(window, length=400, mode='determinate')
+disk_progress.pack(pady=5, padx=20)
+time_update = tk.Label(window, font=('Arial', 9))
+time_update.pack(pady=(20, 5))
+update_stats()
+window.mainloop()
