@@ -1,1 +1,130 @@
-
+import json
+import requests
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+class CurrencyMonitor:
+    def __init__(self, window):
+        self.window = window
+        self.window.title('Курсы валют')
+        self.window.geometry('900x450')
+        self.courses = {}
+        self.groups = {}
+        self.load_groups()
+        self.update_courses()
+        self.create_ui()
+    def load_groups(self):
+        try:
+            with open('save.json', 'r', encoding='utf-8') as file:
+                self.groups = json.load(file)
+        except:
+            self.groups = {}
+    def save_groups(self):
+        with open('save.json', 'w', encoding='utf-8') as file:
+            json.dump(self.groups, file, ensure_ascii=False, indent=2)
+    def update_courses(self):
+        try:
+            otvet = requests.get('https://www.cbr-xml-daily.ru/daily_json.js')
+            self.courses = otvet.json()['Valute']
+            return True
+        except:
+            messagebox.showerror('Ошибка', 'Не могу получить курсы')
+            return False
+    def create_ui(self):
+        frame_button = tk.Frame(self.window)
+        frame_button.pack(pady=10)
+        buttons = [
+            ('Все валюты', self.show_all),
+            ('Найти', self.find),
+            ('Создать группу', self.create_group),
+            ('Мои группы', self.show_groups),
+            ('Добавить', self.add),
+            ('Удалить', self.remove),
+            ('Обновить', self.refresh)
+        ]
+        for text, command in buttons:
+            tk.Button(frame_button, text=text, command=command, width=12).pack(side=tk.LEFT, padx=2)
+        self.display_list = tk.Listbox(self.window, height=15)
+        self.display_list.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        self.status = tk.Label(self.window, text='Готов', bd=1, relief=tk.SUNKEN)
+        self.status.pack(side=tk.BOTTOM, fill=tk.X)
+    def show_all(self):
+        self.display_list.delete(0, tk.END)
+        for cod, data in self.courses.items():
+            self.display_list.insert(tk.END, f'{cod} - {data['Name']}: {data['Value']:.2f} руб.')
+        self.status.config(text=f'Всего валют: {len(self.courses)}')
+    def find(self):
+        cod = simpledialog.askstring('Поиск', 'Код валюты:')
+        if cod:
+            cod = cod.upper()
+            if cod in self.courses:
+                data = self.courses[cod]
+                messagebox.showinfo('Результат', f'{cod} = {data['Value']:.2f} руб.')
+            else:
+                messagebox.showerror('Ошибка', 'Нет такой валюты')
+    def create_group(self):
+        name = simpledialog.askstring('Группа', 'Название группы:')
+        if name:
+            if name in self.groups:
+                messagebox.showerror('Ошибка', 'Такая группа уже есть')
+            else:
+                self.groups[name] = []
+                self.save_groups()
+                messagebox.showinfo('Успешно', f'Группа "{name}" создана')
+    def show_groups(self):
+        if not self.groups:
+            messagebox.showinfo('Инфо', 'Нет ни одной группы')
+            return
+        self.display_list.delete(0, tk.END)
+        for group, list_valut in self.groups.items():
+            self.display_list.insert(tk.END, f'\n--- {group} ---')
+            if list_valut:
+                for cod in list_valut:
+                    if cod in self.courses:
+                        self.display_list.insert(tk.END, f'  {cod} - {self.courses[cod]['Value']:.2f} руб.')
+                    else:
+                        self.display_list.insert(tk.END, f'  {cod} - (нет данных)')
+            else:
+                self.display_list.insert(tk.END, '  (пусто)')
+    def add(self):
+        if not self.groups:
+            messagebox.showwarning('Внимание', 'Сначала создайте группу')
+            return
+        group = simpledialog.askstring('Добавить', 'Название группы:')
+        if group not in self.groups:
+            messagebox.showerror('Ошибка', 'Нет такой группы')
+            return
+        cod = simpledialog.askstring('Добавить', 'Код валюты:').upper()
+        if cod not in self.courses:
+            messagebox.showerror('Ошибка', 'Нет такой валюты')
+        elif cod in self.groups[group]:
+            messagebox.showerror('Ошибка', 'Валюта уже в группе')
+        else:
+            self.groups[group].append(cod)
+            self.save_groups()
+            messagebox.showinfo('Успешно', f'{cod} добавлен в {group}')
+    def remove(self):
+        if not self.groups:
+            messagebox.showwarning('Внимание', 'Нет групп')
+            return
+        group = simpledialog.askstring('Удалить', 'Название группы:')
+        if group not in self.groups:
+            messagebox.showerror('Ошибка', 'Нет такой группы')
+            return
+        if not self.groups[group]:
+            messagebox.showwarning('Внимание', 'В группе нет валют')
+            return
+        list_valut = '\n'.join(self.groups[group])
+        cod = simpledialog.askstring('Удалить', f'Валюты в группе:\n{list_valut}\n\nЧто удалить?').upper()
+        if cod in self.groups[group]:
+            self.groups[group].remove(cod)
+            self.save_groups()
+            messagebox.showinfo('Успешно', f'{cod} удалён')
+        else:
+            messagebox.showerror('Ошибка', 'Нет такой валюты в группе')
+    def refresh(self):
+        if self.update_courses():
+            self.show_all()
+            messagebox.showinfo('Успешно', 'Курсы обновлены')
+window = tk.Tk()
+app = CurrencyMonitor(window)
+window.mainloop()
