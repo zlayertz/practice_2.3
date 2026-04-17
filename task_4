@@ -1,1 +1,116 @@
-
+import tkinter as tk
+from tkinter import ttk, messagebox
+import requests
+import webbrowser
+class GitHubApp:
+    def __init__(self):
+        self.api_url = 'https://api.github.com'
+    def get_profile(self, username):
+        try:
+            data = requests.get(f'{self.api_url}/users/{username}')
+            if data.status_code != 200:
+                return None
+            user = data.json()
+            return {
+                'Имя': user.get('name', 'Не указано'),
+                'Логин': user['login'],
+                'Репозитории': user['public_repos'],
+                'Подписчики': user['followers'],
+                'Подписки': user['following'],
+                'Ссылка': user['html_url']
+            }
+        except:
+            return None
+    def get_repositories(self, username):
+        try:
+            data = requests.get(f'{self.api_url}/users/{username}/repos')
+            if data.status_code != 200:
+                return None
+            repositories = []
+            for repositorii in data.json():
+                repositories.append({
+                    'Название': repositorii['name'],
+                    'Язык': repositorii['language'],
+                    'Ссылка': repositorii['html_url']
+                })
+            return repositories
+        except:
+            return None
+class GitHubClient:
+    def __init__(self, window):
+        self.window = window
+        self.window.title('GitHub')
+        self.window.geometry('600x500')
+        self.api = GitHubApp()
+        title = tk.Label(self.window, text='GitHub')
+        title.pack()
+        tab_panel = ttk.Notebook(self.window)
+        tab_panel.pack(fill=tk.BOTH, expand=True)
+        self.tab1 = ttk.Frame(tab_panel)
+        tab_panel.add(self.tab1, text='Профиль')
+        self.setup_profile_tab()
+        self.tab2 = ttk.Frame(tab_panel)
+        tab_panel.add(self.tab2, text='Репозитории')
+        self.setup_repositories_tab()
+    def setup_profile_tab(self):
+        panel = tk.Frame(self.tab1)
+        panel.pack()
+        tk.Label(panel, text='Логин GitHub:').pack(side=tk.LEFT)
+        self.username = tk.Entry(panel, width=20)
+        self.username.pack(side=tk.LEFT)
+        self.username.bind('<Return>', self.display_profile)
+        tk.Button(panel, text='Показать', command=self.display_profile).pack(side=tk.LEFT)
+        self.profile_text = tk.Text(self.tab1)
+        self.profile_text.pack()
+    def setup_repositories_tab(self):
+        panel = tk.Frame(self.tab2)
+        panel.pack()
+        tk.Label(panel, text='Логин GitHub:').pack(side=tk.LEFT)
+        self.repositories_username = tk.Entry(panel, width=20)
+        self.repositories_username.pack(side=tk.LEFT)
+        self.repositories_username.bind('<Return>', self.display_repositories)
+        tk.Button(panel, text='Показать', command=self.display_repositories).pack(side=tk.LEFT)
+        self.repositories_list = tk.Listbox(self.tab2)
+        self.repositories_list.pack(fill=tk.BOTH, expand=True)
+        self.repositories_list.bind('<Double-1>', self.open_url)
+    def display_profile(self, event=None):
+        username = self.username.get().strip()
+        if not username:
+            messagebox.showwarning('Ошибка', 'Введите логин')
+            return
+        self.profile_text.delete(1.0, tk.END)
+        try:
+            profile = self.api.get_profile(username)
+            if profile:
+                self.profile_text.insert(tk.END, f"Профиль: {username}\n\n")
+                for name, info in profile.items():
+                    self.profile_text.insert(tk.END, f"{name}: {info}\n")
+            else:
+                self.profile_text.insert(tk.END, f'Пользователь {username} не найден')
+        except Exception as error:
+            messagebox.showerror('Ошибка', f'Ошибка: {str(error)}')
+    def display_repositories(self, event=None):
+        username = self.repositories_username.get().strip()
+        if not username:
+            messagebox.showwarning('Ошибка', 'Введите логин')
+            return
+        self.repositories_list.delete(0, tk.END)
+        self.repositorii_data = []
+        try:
+            repositories = self.api.get_repositories(username)
+            if repositories:
+                for repositorii in repositories:
+                    self.repositories_list.insert(tk.END, f"{repositorii['Название']} [{repositorii['Язык']}]")
+                    self.repositorii_data.append(repositorii['Ссылка'])
+            else:
+                self.repositories_list.insert(tk.END, 'Репозитории не найдены')
+        except Exception as error:
+            messagebox.showerror('Ошибка', f'Ошибка: {str(error)}')
+    def open_url(self, event):
+        index = self.repositories_list.curselection()
+        if index and hasattr(self, 'repositorii_data') and index[0] < len(self.repositorii_data):
+            webbrowser.open(self.repositorii_data[index[0]])
+if __name__ == '__main__':
+    window = tk.Tk()
+    github_client = GitHubClient(window)
+    window.mainloop()
