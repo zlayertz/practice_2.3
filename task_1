@@ -24,7 +24,7 @@ def check():
         except:
             table.insert('', tk.END, values=(site, 'Не доступен', 'Ошибка'))
     messagebox.showinfo('Готово', 'Программа завершилась')
-button = tk.Button(window, text='Проверить сайты', command=check, font=('Arial', 12, 'bold'), bg='green', fg='white', padx=20, pady=8)
+button = tk.Button(window, text='Проверить сайты', command=chec, bg='green', fg='white', padx=20, pady=8)
 button.pack(pady=10)
 table = ttk.Treeview(window, columns=('url', 'status', 'code'), show='headings')
 table.heading('url', text='Ссылки на сайты')
